@@ -7,20 +7,116 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Ornitron:wght@400;700;900&family=Courier+Prime:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Courier+Prime:wght@400;700&display=swap"
       rel="stylesheet"
     />
     <style>
-      body {
-        font-family: "Courier Prime", monospace;
+      :root {
+        --bg: #00000f;
+        --amber: #e8a020;
+        --amber-dim: #9a6810;
+        --text-primary: #e8dcc8;
+        --text-dim: #6a6050;
+        --font-display: "Orbitron", sans-serif;
+        --font-data: "Courier Prime", monospace;
       }
-      h1 {
-        font-family: "Ornitron", sans-serif;
+
+      ::before,
+      ::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        cursor: crosshair;
+      }
+
+      #canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: block;
+      }
+      /* LOADING SCREEN STYLES */
+      #loader {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2rem;
+        transition:
+          opacity 0.8s ease,
+          visibility 0.8s ease;
+      }
+
+      #loader-hidden {
+        opacity: 0;
+        visibility: hidden;
+      }
+
+      .loader-title {
+        font-family: var(--font-display);
+        font-size: clamp(1.4rem, 4vw, 2.8rem);
+        font-weight: 900;
+        letter-spacing: 0.35em;
+        color: var(--amber);
+        text-shadow: 0 0 40px rgba(232, 160, 32, 0.6);
+      }
+      .loader-sub {
+        font-family: var(--font-data);
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+      .loader-bar-track {
+        width: min(400px, 60vw);
+        height: 2px;
+        background: rgba(232, 160, 32, 0.15);
+        position: relative;
+      }
+      .loader-bar-fill {
+        height: 100%;
+        background: var(--amber);
+        width: 0%;
+        transition: width 0.3s ease;
+        box-shadow: 0 0 12px var(--amber);
+      }
+      .loader-status {
+        font-family: var(--font-data);
+        font-size: 0.72rem;
+        color: var(--amber-dim);
+        letter-spacing: 0.15em;
+        min-height: 1em;
       }
     </style>
   </head>
   <body>
-    <h1>SOLAR SYSTEM EXPLORER</h1>
-    <p>This is my Solar System Explorer.</p>
+    <!-- THREE.JS RENDER TARGET -->
+    <canvas id="canvas"></canvas>
   </body>
+  <!-- Loading screen — visible until all textures are loaded -->
+  <div id="loader">
+    <div class="loader-title">SOLAR SYSTEM</div>
+    <div class="loader-sub">Initializing planetary data &amp; textures</div>
+    <div class="loader-bar-track">
+      <div class="loader-bar-fill" id="loader-bar"></div>
+    </div>
+    <div class="loader-status" id="loader-status">LOADING...</div>
+  </div>
+
+  <div id="title-bar">
+    <h1>Solar System Explorer</h1>
+    <p>Click any planet &mdash; scroll to zoom &mdash; drag to orbit</p>
+  </div>
 </html>
