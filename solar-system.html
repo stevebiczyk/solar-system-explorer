@@ -4,8 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SOLAR SYSTEM EXPLORER</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Courier+Prime:wght@400;700&display=swap"
       rel="stylesheet"
@@ -15,7 +18,12 @@
         --bg: #00000f;
         --amber: #e8a020;
         --amber-dim: #9a6810;
+        --amber-glow: rgba(232, 160, 32, 0.4);
+        --panel-bg: rgba(4, 8, 20, 0.88);
+        --panel-border: rgba(232, 160, 32, 0.25);
+        --panel-border-hot: rgba(232, 160, 32, 0.7);
         --text-primary: #e8dcc8;
+        --text-dim: #6a6050 --text-primary: #e8dcc8;
         --text-dim: #6a6050;
         --font-display: "Orbitron", sans-serif;
         --font-data: "Courier Prime", monospace;
@@ -183,6 +191,35 @@
         box-shadow: 0 0 16px rgba(232, 160, 32, 0.5);
       }
 
+      .btn-speed {
+        min-width: 4.5rem;
+        text-align: center;
+      }
+
+      /* TIME DISPLAY STYLES */
+      #time-display {
+        position: fixed;
+        bottom: 1.4rem;
+        right: 1.4rem;
+        z-index: 100;
+        text-align: right;
+      }
+      #time-display .speed-label {
+        font-family: var(--font-display);
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--amber);
+        text-shadow: 0 0 20px rgba(232, 160, 32, 0.5);
+        line-height: 1;
+      }
+      #time-display .speed-unit {
+        font-family: var(--font-data);
+        font-size: 0.6rem;
+        color: var(--text-dim);
+        letter-spacing: 0.2em;
+        margin-top: 0.2rem;
+      }
+
       /* PLANET INFO PANEL STYLES */
       #info-panel {
         position: fixed;
@@ -271,6 +308,76 @@
         color: var(--amber);
         border-color: var(--amber);
       }
+
+      /* TOOLTIP STYLES */
+
+      #tooltip {
+        position: fixed;
+        z-index: 200;
+        pointer-events: none;
+        font-family: var(--font-display);
+        font-size: 0.65rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--amber);
+        background: var(--panel-bg);
+        border: 1px solid var(--panel-border);
+        padding: 0.3rem 0.6rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+        white-space: nowrap;
+      }
+      #tooltip.visible {
+        opacity: 1;
+      }
+
+      /* FOCUS RING STYLES */
+      #focus-ring {
+        position: fixed;
+        width: 48px;
+        height: 48px;
+        border: 1px solid var(--amber);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 150;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.5);
+        transition:
+          opacity 0.3s ease,
+          transform 0.4s ease;
+        box-shadow:
+          0 0 12px rgba(232, 160, 32, 0.4),
+          inset 0 0 12px rgba(232, 160, 32, 0.1);
+      }
+
+      #focus-ring.visible {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      /* HINTS PANEL STYLES */
+      #hints {
+        position: fixed;
+        top: 1.4rem;
+        right: 1.4rem;
+        z-index: 100;
+        text-align: right;
+        pointer-events: none;
+        transition: opacity 1.5s ease;
+      }
+      #hints.hidden {
+        opacity: 0;
+      }
+      .hint-line {
+        font-family: var(--font-data);
+        font-size: 0.6rem;
+        color: var(--text-dim);
+        letter-spacing: 0.15em;
+        line-height: 2;
+        text-transform: uppercase;
+      }
+      .hint-line span {
+        color: var(--amber-dim);
+      }
     </style>
   </head>
   <body>
@@ -326,6 +433,20 @@
     <button class="panel-close" id="panel-close">× Dismiss</button>
   </div>
 
+  <!-- Floating planet name tooltip (follows mouse) -->
+  <div id="tooltip"></div>
+
+  <!-- Focus ring that appears at screen-centre when locked onto a planet -->
+  <div id="focus-ring"></div>
+
+  <!-- Keyboard/mouse hints — fades out after 8 seconds -->
+  <div id="hints">
+    <div class="hint-line"><span>Click</span> — Focus planet</div>
+    <div class="hint-line"><span>Scroll</span> — Zoom</div>
+    <div class="hint-line"><span>Drag</span> — Orbit camera</div>
+    <div class="hint-line"><span>Esc</span> — Release focus</div>
+  </div>
+
   <!-- Bottom-left controls: speed + toggles -->
   <div id="controls">
     <div class="ctrl-section-label">Time Scale</div>
@@ -341,5 +462,11 @@
       <button class="btn active" id="btn-labels">Labels</button>
       <button class="btn" id="btn-scale">True Scale</button>
     </div>
+  </div>
+
+  <!-- Time display bottom-right -->
+  <div id="time-display">
+    <div class="speed-label" id="speed-display">1×</div>
+    <div class="speed-unit">Time scale</div>
   </div>
 </html>
