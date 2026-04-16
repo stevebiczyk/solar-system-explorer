@@ -26,14 +26,14 @@
         --panel-border: rgba(232, 160, 32, 0.25);
         --panel-border-hot: rgba(232, 160, 32, 0.7);
         --text-primary: #e8dcc8;
-        --text-dim: #6a6050 --text-primary: #e8dcc8;
         --text-dim: #6a6050;
         --font-display: "Orbitron", sans-serif;
         --font-data: "Courier Prime", monospace;
       }
 
-      ::before,
-      ::after {
+      *,
+      *::before,
+      *::after {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
@@ -757,6 +757,109 @@
           },
         },
       ];
+
+      // SCENE SETUP //
+
+      const canvas = document.getElementById("canvas");
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        powerPreference: "high-performance",
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = false; // Shadows can be performance-heavy, will use lighting instead
+      renderer.outputEncoding = THREE.sRGBEncoding; // Better color rendering for textures
+
+      // The scene is the container for all 3D objects
+      const scene = new THREE.Scene();
+      // A perspective camera simulates human vision
+      const camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        100000,
+      );
+      camera.position.set(0, 80, 200); // Start with a good view of the planets
+      camera.lookAt(0, 0, 0); // Look at the center of the scene where the Sun will be
+      // OrbitControls allow the user to rotate around a target point
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true; // Smooth momentum after releasing mouse
+      controls.dampingFactor = 0.06; // Damping inertia — higher is snappier
+      controls.minDistance = 3; // Can't zoom closer than this to target
+      controls.maxDistance = 3000; // Can't zoom farther than this
+      controls.zoomSpeed = 1.2; // Mouse wheel zoom speed
+      controls.rotateSpeed = 0.5; // Mouse drag rotation speed
+      controls.panSpeed = 0.8; // Mouse right-click pan speed
+
+      // LIGHTING
+      //
+      /* Pointlight is the Sun's position - primary lightsource for the scene
+            AmbientLight prevents the night sides of planets being pure black.
+            */
+
+      const sunLight = new THREE.PointLight(0xfff4e0, 2.2, 0, 1);
+      scene.add(sunLight);
+
+      const ambientLight = new THREE.AmbientLight(0x111122, 0.6);
+      scene.add(ambientLight);
+
+      // STAR FIELD BACKGROUND //
+      //
+      /* A large sphere with a star texture mapped on the inside creates an immersive backdrop */
+      function createStarField() {
+        const count = 10000;
+        const positions = new Float32Array(count * 3);
+        const sizes = new Float32Array(count);
+        const colors = new Float32Array(count * 3);
+
+        const colorPalette = [
+          new THREE.Color(0xffffff), // white
+          new THREE.Color(0xfff4e0), // warm white
+          new THREE.Color(0xaad4ff), // blue-white
+          new THREE.Color(0xffddaa), // orange
+          new THREE.Color(0xffe0c0), // pale yellow
+        ];
+
+        for (let i = 0; i < count; i++) {
+          // Random point on sphere surface using spherical coordinates
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(Math.random() * 2 - 1);
+          const r = 5000 + Math.random() * 1000;
+
+          positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+          positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+          positions[i * 3 + 2] = r * Math.cos(phi);
+
+          // Exponential distribution: most stars are small/dim
+          sizes[i] =
+            Math.random() < 0.02
+              ? 2.5 + Math.random() * 1.5 // 2% are bright large stars
+              : 0.5 + Math.random() * 1.0; // rest are tiny
+
+          const col =
+            colorPalette[Math.floor(Math.random() * colorPalette.length)];
+          colors[i * 3] = col.r;
+          colors[i * 3 + 1] = col.g;
+          colors[i * 3 + 2] = col.b;
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+        const mat = new THREE.PointsMaterial({
+          size: 1.2,
+          vertexColors: true,
+          sizeAttenuation: true,
+          transparent: true,
+          opacity: 0.9,
+        });
+
+        scene.add(new THREE.Points(geo, mat));
+      }
+
+      createStarField();
     </script>
   </body>
 </html>
