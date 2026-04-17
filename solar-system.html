@@ -948,6 +948,83 @@
       }
 
       createSun();
+
+      // PLANET GENERATOR
+      /*
+  Loop over PLANET_DATA and create a mesh for each planet.
+  */
+      const planets = []; // Array of planet objects with mesh, data, and orbital parameters
+      const planetMeshes = []; // Just the meshes, for raycasting and interaction
+
+      // Orbit lines material
+      function createOrbitLine(radius, eccentricity, inclination, color) {
+        const a = radius; // Semi-major axis
+        const b = radius * Math.sqrt(1 - eccentricity * eccentricity); // Semi-minor axis
+
+        const curve = new THREE.EllipseCurve(
+          0,
+          0, // Center at origin
+          a,
+          b, // Radii
+          0,
+          Math.PI * 2, // Start and end angles
+          false, // Clockwise
+          0, // Rotation (will apply inclination later)
+        );
+
+        const points = curve.getPoints(256);
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+          color: color || 0x334455,
+          transparent: true,
+          opacity: 0.4,
+        });
+        const line = new THREE.LineLoop(geometry, material);
+        line.rotation.x = THREE.MathUtils.degToRad(inclination); // Rotate to match orbital inclination
+        return line;
+      }
+
+      // Floating label above each planet
+      function createLabel(name) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext("2d");
+        ctx.font = "500 20px Orbitron, monospace";
+        ctx.fillStyle = "rgba(232, 160, 32, 0.9)";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(name.toUpperCase(), 128, 32);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({
+          map: texture,
+          transparent: true,
+          depthWrite: false,
+          sizeAttenuation: true,
+        });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(14, 3.5, 1);
+        return sprite;
+      }
+
+      // Moon helper (Earth's moon only)
+      function createMoon(parentGroup) {
+        const moonGeo = new THREE.SphereGeometry(0.5, 32, 32);
+        const moonMat = new THREE.MeshStandardMaterial({
+          color: 0xaaaaaa,
+          roughness: 0.9,
+        });
+        const moon = new THREE.Mesh(moonGeo, moonMat);
+
+        // Moon pivot inside the planet group
+        const moonPivot = new THREE.Object3D();
+        moonPivot.add(moon);
+        moon.position.x = 4; // Average distance from Earth to Moon in scene units
+        parentGroup.add(moonPivot);
+
+        return moonPivot;
+      }
     </script>
   </body>
 </html>
