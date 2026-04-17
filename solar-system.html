@@ -535,6 +535,7 @@
       // Planetary data array with real and visual parameters for each planet
 
       const PLANET_DATA = [
+        // Planet data from NASA's planetary fact sheets and other sources, with some tuning for visual appeal
         {
           name: "Mercury",
           // Visual (scene) units — these are tuned, not real
@@ -795,8 +796,8 @@
       // LIGHTING
       //
       /* Pointlight is the Sun's position - primary lightsource for the scene
-            AmbientLight prevents the night sides of planets being pure black.
-          */
+                  AmbientLight prevents the night sides of planets being pure black.
+                */
 
       const sunLight = new THREE.PointLight(0xfff4e0, 2.2, 0, 1);
       scene.add(sunLight);
@@ -863,25 +864,34 @@
 
       // THE SUN
       /*
-        The Sun has three layers:
-        1. Core sphere with the surface texture
-        2. A subtle self-rotation animation (the real Sun rotates ~25 days)
-        3. Glow sprites — THREE.Sprite objects with AdditiveBlending
-           Additive blending means colours add to whatever's behind them,
-           creating the "light leak" glow effect without any shader code.
-      */
+              The Sun has three layers:
+              1. Core sphere with the surface texture
+              2. A subtle self-rotation animation (the real Sun rotates ~25 days)
+              3. Glow sprites — THREE.Sprite objects with AdditiveBlending
+                 Additive blending means colours add to whatever's behind them,
+                 creating the "light leak" glow effect without any shader code.
+            */
 
       const textureLoader = new THREE.TextureLoader();
       let loadedCount = 0;
-      const totalAssets = PLANET_DATA.length + 3; // planets + sun + clouds + saturn rings
+      let totalAssets = 0;
+
+      function registerAsset() {
+        totalAssets++;
+      }
 
       function updateLoader(msg) {
         loadedCount++;
-        const pct = Math.round((loadedCount / totalAssets) * 100);
-        document.getElementById("loaded-bar").style.width = pct + "%";
+        // Guard: never show > 100%, never dismiss until ALL registered assets resolve
+        const pct =
+          totalAssets > 0
+            ? Math.min(100, Math.round((loadedCount / totalAssets) * 100))
+            : 0;
+        document.getElementById("loader-bar").style.width = pct + "%";
         document.getElementById("loader-status").textContent =
           msg || `LOADING ASSETS ${pct}%`;
-        if (pct >= 100) {
+        // Only dismiss when every registered asset has reported back
+        if (loadedCount >= totalAssets && totalAssets > 0) {
           setTimeout(() => {
             document.getElementById("loader").classList.add("hidden");
             setTimeout(() => {
@@ -895,6 +905,7 @@
       function createSun() {
         const sunGeo = new THREE.SphereGeometry(12, 64, 64);
 
+        registerAsset();
         textureLoader.load(
           "https://www.solarsystemscope.com/textures/download/2k_sun.jpg",
           (tex) => {
@@ -951,12 +962,12 @@
 
       // PLANET GENERATOR
       /*
-  Loop over PLANET_DATA and create a mesh for each planet.
-  */
+        Loop over PLANET_DATA and create a mesh for each planet.
+        */
       const planets = []; // Array of planet objects with mesh, data, and orbital parameters
       const planetMeshes = []; // Just the meshes, for raycasting and interaction
 
-      // Orbit lines material
+      // Orbit line visualisation
       function createOrbitLine(radius, eccentricity, inclination, color) {
         const a = radius; // Semi-major axis
         const b = radius * Math.sqrt(1 - eccentricity * eccentricity); // Semi-minor axis
@@ -1024,6 +1035,80 @@
         parentGroup.add(moonPivot);
 
         return moonPivot;
+      }
+
+      // Build all planets based on data
+      PLANET_DATA.forEach((data) => {
+        // Orbit pivot — sits at scene origin, rotated to move planet
+        const orbitPivot = new THREE.Object3D();
+        orbitPivot.rotation.x = THREE.MathUtils.degToRad(data.inclination);
+        scene.add(orbitPivot);
+      });
+
+      // Planet group — allows for axial tilt and self-rotation
+      const planetGroup = new THREE.Object3D();
+      planetGroup.position.x = data.orbitRadius;
+      scene.add(planetGroup);
+
+      // Planet sphere geometry - more segments = smoother sphere but worse performance, so 64 is a good balance for close-up viewing
+      const geo = new THREE.SphereGeometry(data.radius, 64, 64);
+
+      // Material - placeholder, replaced when texture loads
+      const mat = new THREE.MeshStandardMaterial({
+        color: data.color,
+        roughness: 1.0,
+        metalness: 0.0,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt); // Apply axial tilt
+      mesh.userData = { name: data.name, info: data.info }; // Store reference to planet data for interaction
+      planetGroup.add(mesh);
+      planetMeshes.push(mesh); // Add to array for raycasting
+
+      // Load texture asynchronously
+      registerAsset();
+      textureLoader.load(
+        data.texture,
+        (tex) => {
+          tex.encoding = THREE.sRGBEncoding; // Ensure correct color space
+          mat.map = tex;
+          mat.color.set(0xffffff); // Reset color to white once texture is applied
+          mat.needsUpdate = true;
+          updateLoader(`${data.name.toUpperCase()} LOADED`);
+        },
+        undefined,
+        () => {
+          updateLoader(`${data.name.toUpperCase()} TEXTURE FAILED`);
+        },
+      );
+
+      // Cloud layer for Earth
+      let cloudMesh = null;
+      if (data.cloudTexture) {
+        const cloudGeo = new THREE.SphereGeometry(data.radius * 1.02, 64, 64);
+        const cloudMat = new THREE.MeshStandardMaterial({
+          transparent: true,
+          opacity: 0.8,
+          depthWrite: false,
+        });
+        cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+        cloudMesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt);
+        planetGroup.add(cloudMesh);
+
+        registerAsset();
+        textureLoader.load(
+          data.cloudTexture,
+          (tex) => {
+            tex.encoding = THREE.sRGBEncoding;
+            cloudMat.map = tex;
+            cloudMat.needsUpdate = true;
+            updateLoader(`${data.name.toUpperCase()} CLOUDS LOADED`);
+          },
+          undefined,
+          () => {
+            updateLoader(`${data.name.toUpperCase()} CLOUDS FAILED`);
+          },
+        );
       }
     </script>
   </body>
