@@ -1110,6 +1110,57 @@
           },
         );
       }
+
+      // Saturn / Uranus rings
+      let ringMesh = null;
+      if (data.hasRings) {
+        const innerRadius = data.radius * 1.4;
+        const outerRadius = data.radius * 2.5;
+        const ringGeo = new THREE.RingGeometry(innerRadius, outerRadius, 128);
+
+        /* RingGeometry flatness fix - mapping texture coordinates radially */
+        const pos = ringGeo.attributes.position;
+        const uv = ringGeo.attributes.uv;
+        const v3 = new THREE.Vector3();
+        for (let i = 0; i < pos.count; i++) {
+          v3.fromBufferAttribute(pos, i);
+          uv.setXY(i, v3.length() < (innerR + outerR) / 2 ? 0 : 1, 1);
+        }
+
+        if (data.ringTexture) {
+          const ringMat = new THREE.MeshBasicMaterial({
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9,
+            depthWrite: false,
+          });
+          ringMesh = new THREE.Mesh(ringGeo, ringMat);
+          ringMesh.rotation.x = Math.PI / 2; // Rotate flat
+          ringMesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt - 90); // Align with planet's tilt
+          planetGroup.add(ringMesh);
+
+          registerAsset();
+          textureLoader.load(data.ringTexture, (tex) => {
+            ringMat.map = tex;
+            ringMat.alphaMap = tex; // Use the same texture for alpha transparency
+            ringMat.needsUpdate = true;
+            updateLoader(`${data.name.toUpperCase()} RINGS LOADED`);
+          });
+        } else {
+          // Uranus — simple coloured ring
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: data.ringColor || 0x4a6060,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.3,
+            depthWrite: false,
+          });
+          ringMesh = new THREE.Mesh(ringGeo, ringMat);
+          ringMesh.rotation.x = Math.PI / 2;
+          planetGroup.add(ringMesh);
+          updateLoader(`${data.name.toUpperCase()} RINGS`);
+        }
+      }
     </script>
   </body>
 </html>
