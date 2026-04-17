@@ -1043,124 +1043,170 @@
         const orbitPivot = new THREE.Object3D();
         orbitPivot.rotation.x = THREE.MathUtils.degToRad(data.inclination);
         scene.add(orbitPivot);
-      });
 
-      // Planet group — allows for axial tilt and self-rotation
-      const planetGroup = new THREE.Object3D();
-      planetGroup.position.x = data.orbitRadius;
-      scene.add(planetGroup);
+        // Planet group — allows for axial tilt and self-rotation
+        const planetGroup = new THREE.Object3D();
+        planetGroup.position.x = data.orbitRadius;
+        scene.add(planetGroup);
 
-      // Planet sphere geometry - more segments = smoother sphere but worse performance, so 64 is a good balance for close-up viewing
-      const geo = new THREE.SphereGeometry(data.radius, 64, 64);
+        // Planet sphere geometry - more segments = smoother sphere but worse performance, so 64 is a good balance for close-up viewing
+        const geo = new THREE.SphereGeometry(data.radius, 64, 64);
 
-      // Material - placeholder, replaced when texture loads
-      const mat = new THREE.MeshStandardMaterial({
-        color: data.color,
-        roughness: 1.0,
-        metalness: 0.0,
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt); // Apply axial tilt
-      mesh.userData = { name: data.name, info: data.info }; // Store reference to planet data for interaction
-      planetGroup.add(mesh);
-      planetMeshes.push(mesh); // Add to array for raycasting
-
-      // Load texture asynchronously
-      registerAsset();
-      textureLoader.load(
-        data.texture,
-        (tex) => {
-          tex.encoding = THREE.sRGBEncoding; // Ensure correct color space
-          mat.map = tex;
-          mat.color.set(0xffffff); // Reset color to white once texture is applied
-          mat.needsUpdate = true;
-          updateLoader(`${data.name.toUpperCase()} LOADED`);
-        },
-        undefined,
-        () => {
-          updateLoader(`${data.name.toUpperCase()} TEXTURE FAILED`);
-        },
-      );
-
-      // Cloud layer for Earth
-      let cloudMesh = null;
-      if (data.cloudTexture) {
-        const cloudGeo = new THREE.SphereGeometry(data.radius * 1.02, 64, 64);
-        const cloudMat = new THREE.MeshStandardMaterial({
-          transparent: true,
-          opacity: 0.8,
-          depthWrite: false,
+        // Material - placeholder, replaced when texture loads
+        const mat = new THREE.MeshStandardMaterial({
+          color: data.color,
+          roughness: 1.0,
+          metalness: 0.0,
         });
-        cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
-        cloudMesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt);
-        planetGroup.add(cloudMesh);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt); // Apply axial tilt
+        mesh.userData = { name: data.name, info: data.info }; // Store reference to planet data for interaction
+        planetGroup.add(mesh);
+        planetMeshes.push(mesh); // Add to array for raycasting
 
+        // Load texture asynchronously
         registerAsset();
         textureLoader.load(
-          data.cloudTexture,
+          data.texture,
           (tex) => {
-            tex.encoding = THREE.sRGBEncoding;
-            cloudMat.map = tex;
-            cloudMat.needsUpdate = true;
-            updateLoader(`${data.name.toUpperCase()} CLOUDS LOADED`);
+            tex.encoding = THREE.sRGBEncoding; // Ensure correct color space
+            mat.map = tex;
+            mat.color.set(0xffffff); // Reset color to white once texture is applied
+            mat.needsUpdate = true;
+            updateLoader(`${data.name.toUpperCase()} LOADED`);
           },
           undefined,
           () => {
-            updateLoader(`${data.name.toUpperCase()} CLOUDS FAILED`);
+            updateLoader(`${data.name.toUpperCase()} TEXTURE FAILED`);
           },
         );
-      }
 
-      // Saturn / Uranus rings
-      let ringMesh = null;
-      if (data.hasRings) {
-        const innerRadius = data.radius * 1.4;
-        const outerRadius = data.radius * 2.5;
-        const ringGeo = new THREE.RingGeometry(innerRadius, outerRadius, 128);
-
-        /* RingGeometry flatness fix - mapping texture coordinates radially */
-        const pos = ringGeo.attributes.position;
-        const uv = ringGeo.attributes.uv;
-        const v3 = new THREE.Vector3();
-        for (let i = 0; i < pos.count; i++) {
-          v3.fromBufferAttribute(pos, i);
-          uv.setXY(i, v3.length() < (innerR + outerR) / 2 ? 0 : 1, 1);
-        }
-
-        if (data.ringTexture) {
-          const ringMat = new THREE.MeshBasicMaterial({
-            side: THREE.DoubleSide,
+        // Cloud layer for Earth
+        let cloudMesh = null;
+        if (data.cloudTexture) {
+          const cloudGeo = new THREE.SphereGeometry(data.radius * 1.02, 64, 64);
+          const cloudMat = new THREE.MeshStandardMaterial({
             transparent: true,
-            opacity: 0.9,
+            opacity: 0.8,
             depthWrite: false,
           });
-          ringMesh = new THREE.Mesh(ringGeo, ringMat);
-          ringMesh.rotation.x = Math.PI / 2; // Rotate flat
-          ringMesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt - 90); // Align with planet's tilt
-          planetGroup.add(ringMesh);
+          cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+          cloudMesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt);
+          planetGroup.add(cloudMesh);
 
           registerAsset();
-          textureLoader.load(data.ringTexture, (tex) => {
-            ringMat.map = tex;
-            ringMat.alphaMap = tex; // Use the same texture for alpha transparency
-            ringMat.needsUpdate = true;
-            updateLoader(`${data.name.toUpperCase()} RINGS LOADED`);
-          });
-        } else {
-          // Uranus — simple coloured ring
-          const ringMat = new THREE.MeshBasicMaterial({
-            color: data.ringColor || 0x4a6060,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.3,
-            depthWrite: false,
-          });
-          ringMesh = new THREE.Mesh(ringGeo, ringMat);
-          ringMesh.rotation.x = Math.PI / 2;
-          planetGroup.add(ringMesh);
-          updateLoader(`${data.name.toUpperCase()} RINGS`);
+          textureLoader.load(
+            data.cloudTexture,
+            (tex) => {
+              tex.encoding = THREE.sRGBEncoding;
+              cloudMat.map = tex;
+              cloudMat.needsUpdate = true;
+              updateLoader(`${data.name.toUpperCase()} CLOUDS LOADED`);
+            },
+            undefined,
+            () => {
+              updateLoader(`${data.name.toUpperCase()} CLOUDS FAILED`);
+            },
+          );
         }
-      }
+
+        // Saturn / Uranus rings
+        let ringMesh = null;
+        if (data.hasRings) {
+          const innerRadius = data.radius * 1.4;
+          const outerRadius = data.radius * 2.5;
+          const ringGeo = new THREE.RingGeometry(innerRadius, outerRadius, 128);
+
+          /* RingGeometry flatness fix - mapping texture coordinates radially */
+          const pos = ringGeo.attributes.position;
+          const uv = ringGeo.attributes.uv;
+          const v3 = new THREE.Vector3();
+          for (let i = 0; i < pos.count; i++) {
+            v3.fromBufferAttribute(pos, i);
+            uv.setXY(i, v3.length() < (innerR + outerR) / 2 ? 0 : 1, 1);
+          }
+
+          if (data.ringTexture) {
+            const ringMat = new THREE.MeshBasicMaterial({
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.9,
+              depthWrite: false,
+            });
+            ringMesh = new THREE.Mesh(ringGeo, ringMat);
+            ringMesh.rotation.x = Math.PI / 2; // Rotate flat
+            ringMesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt - 90); // Align with planet's tilt
+            planetGroup.add(ringMesh);
+
+            registerAsset();
+            textureLoader.load(data.ringTexture, (tex) => {
+              ringMat.map = tex;
+              ringMat.alphaMap = tex; // Use the same texture for alpha transparency
+              ringMat.needsUpdate = true;
+              updateLoader(`${data.name.toUpperCase()} RINGS LOADED`);
+            });
+          } else {
+            // Uranus — simple coloured ring
+            const ringMat = new THREE.MeshBasicMaterial({
+              color: data.ringColor || 0x4a6060,
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.3,
+              depthWrite: false,
+            });
+            ringMesh = new THREE.Mesh(ringGeo, ringMat);
+            ringMesh.rotation.x = Math.PI / 2;
+            planetGroup.add(ringMesh);
+            updateLoader(`${data.name.toUpperCase()} RINGS`);
+          }
+        }
+
+        // Orbit Line
+        const orbitLine = createOrbitLine(
+          data.orbitRadius,
+          data.eccentricity,
+          data.inclination,
+          0x334455,
+        );
+        scene.add(orbitLine);
+
+        // Label sprite
+        const label = createLabel(data.name);
+        label.position.y = data.radius + 2.5;
+        planetGroup.add(label);
+
+        // Moon - Earth only
+        const moonPivot = data.hasMoon ? createMoon(planetGroup) : null;
+
+        // Store everything we need to animate this planet
+        planets.push({
+          data,
+          orbitPivot,
+          planetGroup,
+          mesh,
+          cloudMesh,
+          ringMesh,
+          orbitLine,
+          label,
+          moonPivot,
+          // Current orbital angle (starts at a random position)
+          angle: data.startAngle,
+          // Screen-space position for UI dot highlighting
+          screenPos: new THREE.Vector3(),
+        });
+      });
+
+      // Build the planet quick-nav strip
+
+      const nav = document.getElementById("planet-nav");
+      planets.forEach((p, i) => {
+        const dot = document.createElement("div");
+        dot.className = "planet-dot";
+        dot.textContent = p.data.name.slice(0, 3).toUpperCase();
+        dot.title = p.data.name;
+        dot.addEventListener("click", () => focusPlanet(i));
+        nav.appendChild(dot);
+      });
     </script>
   </body>
 </html>
