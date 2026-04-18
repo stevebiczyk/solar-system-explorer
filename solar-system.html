@@ -1394,6 +1394,50 @@
             );
           }
         });
+
+      // ANIMATION LOOP
+      /* The render loop is driven by requestAnimationFrame, which calls the provided function before the next repaint. We update planet positions based on their orbital periods and the elapsed time.
+       */
+
+      const clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const delta = clock.getDelta(); // seconds since last frame
+        const deltaDays = delta / 86400; // Convert to days (assuming 1 unit of timeScale = 1 day)
+
+        // Sun rotation
+        if (sunMesh) {
+          sunMesh.rotation.y += delta * 0.004 * Math.max(1, timeScale * 0.0001);
+        }
+
+        // PLANET ORBITAL MECHANICS
+        planets.forEach((p) => {
+          if (timescale === 0) return; // Paused
+          // Angular velocity in radians per day
+          const omega = (2 * Math.PI) / p.data.orbitalPeriod;
+          // Advanceorbital angle based on time elapsed and timeScale
+          p.angle += omega * deltaDays * timeScale;
+          // Elliptical orbit position from angle
+          p.orbitPivot.rotation.y = p.angle;
+
+          // Self-rotation around polar axis
+          const rotOmega = (2 * Math.PI) / Math.abs(p.data.rotationPeriod);
+          const rotDir = p.data.rotationPeriod > 0 ? 1 : -1;
+          p.mesh.rotation.y += rotOmega * deltaDays * timeScale * rotDir * 0.1;
+          // Cloud layer rotates slightly faster than the planet
+          if (p.cloudMesh) {
+            p.cloudMesh.rotation.y +=
+              rotOmega * deltaDays * timeScale * rotDir * 0.12;
+          }
+
+          // Moon orbits Earth
+          if (p.moonPivot) {
+            p.moonPivot.rotation.y +=
+              ((2 * Math.PI) / 27.32) * deltaDays * timeScale;
+          }
+        });
+      }
     </script>
   </body>
 </html>
