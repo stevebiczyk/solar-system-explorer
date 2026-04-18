@@ -552,8 +552,7 @@
           rotationPeriod: 58.65, // Earth days for one self-rotation
           startAngle: Math.random() * Math.PI * 2,
           // Texture URL
-          texture:
-            "https://www.solarsystemscope.com/textures/download/2k_mercury.jpg",
+          texture: "./textures/2k_mercury.jpg",
           color: 0x8c8c8c, // Fallback colour if texture fails
           // Info panel display data
           info: {
@@ -579,8 +578,7 @@
           axialTilt: 177.4, // Retrograde rotation!
           rotationPeriod: -243.02, // Negative = retrograde
           startAngle: Math.random() * Math.PI * 2,
-          texture:
-            "https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg",
+          texture: "./textures/2k_venus_surface.jpg",
           color: 0xe8c070,
           info: {
             diameter: "12,104 km",
@@ -605,10 +603,8 @@
           axialTilt: 23.44,
           rotationPeriod: 1.0,
           startAngle: Math.random() * Math.PI * 2,
-          texture:
-            "https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg",
-          cloudTexture:
-            "https://www.solarsystemscope.com/textures/download/2k_earth_clouds.jpg",
+          texture: "./textures/2k_earth.jpg",
+          cloudTexture: "./textures/2k_earth_clouds.jpg",
           color: 0x2266aa,
           hasMoon: true,
           info: {
@@ -634,8 +630,7 @@
           axialTilt: 25.19,
           rotationPeriod: 1.026,
           startAngle: Math.random() * Math.PI * 2,
-          texture:
-            "https://www.solarsystemscope.com/textures/download/2k_mars.jpg",
+          texture: "./textures/2k_mars.jpg",
           color: 0xc1440e,
           info: {
             diameter: "6,779 km",
@@ -660,8 +655,7 @@
           axialTilt: 3.13,
           rotationPeriod: 0.41, // Fastest rotation in the solar system
           startAngle: Math.random() * Math.PI * 2,
-          texture:
-            "https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg",
+          texture: "./textures/2k_jupiter.jpg",
           color: 0xc88b3a,
           info: {
             diameter: "139,820 km",
@@ -686,10 +680,8 @@
           axialTilt: 26.73,
           rotationPeriod: 0.44,
           startAngle: Math.random() * Math.PI * 2,
-          texture:
-            "https://www.solarsystemscope.com/textures/download/2k_saturn.jpg",
-          ringTexture:
-            "https://www.solarsystemscope.com/textures/download/2k_saturn_ring_alpha.png",
+          texture: "./textures/2k_saturn.jpg",
+          ringTexture: "./textures/2k_saturn_ring.png",
           color: 0xe4d191,
           hasRings: true,
           info: {
@@ -715,8 +707,7 @@
           axialTilt: 97.77, // Rotates on its side!
           rotationPeriod: -0.72, // Retrograde
           startAngle: Math.random() * Math.PI * 2,
-          texture:
-            "https://www.solarsystemscope.com/textures/download/2k_uranus.jpg",
+          texture: "./textures/2k_uranus.jpg",
           color: 0x7de8e8,
           hasRings: true,
           ringColor: 0x4a8a8a,
@@ -743,8 +734,7 @@
           axialTilt: 28.32,
           rotationPeriod: 0.67,
           startAngle: Math.random() * Math.PI * 2,
-          texture:
-            "https://www.solarsystemscope.com/textures/download/2k_neptune.jpg",
+          texture: "./textures/2k_neptune.jpg",
           color: 0x3f54ba,
           info: {
             diameter: "49,244 km",
@@ -796,8 +786,8 @@
       // LIGHTING
       //
       /* Pointlight is the Sun's position - primary lightsource for the scene
-                  AmbientLight prevents the night sides of planets being pure black.
-                */
+                                AmbientLight prevents the night sides of planets being pure black.
+                              */
 
       const sunLight = new THREE.PointLight(0xfff4e0, 2.2, 0, 1);
       scene.add(sunLight);
@@ -864,13 +854,13 @@
 
       // THE SUN
       /*
-              The Sun has three layers:
-              1. Core sphere with the surface texture
-              2. A subtle self-rotation animation (the real Sun rotates ~25 days)
-              3. Glow sprites — THREE.Sprite objects with AdditiveBlending
-                 Additive blending means colours add to whatever's behind them,
-                 creating the "light leak" glow effect without any shader code.
-            */
+                            The Sun has three layers:
+                            1. Core sphere with the surface texture
+                            2. A subtle self-rotation animation (the real Sun rotates ~25 days)
+                            3. Glow sprites — THREE.Sprite objects with AdditiveBlending
+                               Additive blending means colours add to whatever's behind them,
+                               creating the "light leak" glow effect without any shader code.
+                          */
 
       const textureLoader = new THREE.TextureLoader();
       let loadedCount = 0;
@@ -907,7 +897,7 @@
 
         registerAsset();
         textureLoader.load(
-          "https://www.solarsystemscope.com/textures/download/2k_sun.jpg",
+          "./textures/2k_sun.jpg",
           (tex) => {
             const mat = new THREE.MeshBasicMaterial({
               map: tex,
@@ -962,8 +952,8 @@
 
       // PLANET GENERATOR
       /*
-        Loop over PLANET_DATA and create a mesh for each planet.
-        */
+                      Loop over PLANET_DATA and create a mesh for each planet.
+                      */
       const planets = []; // Array of planet objects with mesh, data, and orbital parameters
       const planetMeshes = []; // Just the meshes, for raycasting and interaction
 
@@ -1123,7 +1113,11 @@
           const v3 = new THREE.Vector3();
           for (let i = 0; i < pos.count; i++) {
             v3.fromBufferAttribute(pos, i);
-            uv.setXY(i, v3.length() < (innerR + outerR) / 2 ? 0 : 1, 1);
+            uv.setXY(
+              i,
+              v3.length() < (innerRadius + outerRadius) / 2 ? 0 : 1,
+              1,
+            );
           }
 
           if (data.ringTexture) {
@@ -1207,6 +1201,199 @@
         dot.addEventListener("click", () => focusPlanet(i));
         nav.appendChild(dot);
       });
+
+      // Raycasting //
+      /*
+                      Raycasting is used to detect which planet the user is clicking on or hovering over.
+                      We cast a ray from the camera through the mouse position and see which planet meshes it intersects.
+                    */
+
+      const raycaster = new THREE.Raycaster();
+      const mouseNDC = new THREE.Vector2(-99, -99); // Normalized Device Coordinates of mouse, initialized off-screen
+      const tooltip = document.getElementById("tooltip");
+      let hoveredPlanet = null; // Index of currently hovered planet for tooltip
+
+      document.addEventListener("mousemove", (e) => {
+        // Convert mouse position to Normalized Device Coordinates (-1 to +1)
+        mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        // Move the tooltip to follow the mouse
+        tooltip.style.left = e.clientX + 16 + "px";
+        tooltip.style.top = e.clientY + 8 + "px";
+      });
+
+      document.addEventListener("click", (e) => {
+        raycaster.setFromCamera(mouseNDC, camera);
+        const hits = raycaster.intersectObjects(planetMeshes);
+        if (hits.length > 0) {
+          const name = hits[0].object.userData.name;
+          const index = planets.findIndex((p) => p.data.name === name);
+          if (index !== -1) focusPlanet(index);
+        } else if (document.getElementById("info-panel").contains(e.target)) {
+          releaseFocus();
+        }
+      });
+
+      // CAMERA FOCUS SYSTEM
+      /*
+              When a planet is clicked, we want the camera to smoothly travel
+            to a position orbiting that planet
+              */
+      let focusedPlanetIndex = -1;
+      let isFocusing = false; // Whether we're currently in the process of moving the camera to a planet
+      const focusTarget = new THREE.Vector3(); // The point the camera orbits around when focused
+      const focusCamOffset = new THREE.Vector3(); // The offset from the focus target where the camera should be positioned when focused
+      function focusPlanet(index) {
+        focusedPlanetIndex = index;
+        isFocusing = true;
+
+        const p = planets[index];
+        const r = planets.data.radius;
+
+        // Update UI
+        const panel = document.getElementById("info-panel");
+        const d = planets.data.info;
+        document.getElementById("panel-name").textContent = p.data.name;
+        document.getElementById("panel-diameter").textContent = d.diameter;
+        document.getElementById("panel-mass").textContent = d.mass;
+        document.getElementById("panel-dist").textContent = d.dist;
+        document.getElementById("panel-period").textContent = d.period;
+        document.getElementById("panel-day").textContent = d.day;
+        document.getElementById("panel-temp").textContent = d.temp;
+        document.getElementById("panel-moons").textContent = d.moons;
+        document.getElementById("panel-desc").textContent = d.desc;
+        panel.classList.add("visible");
+
+        // Update nav dots
+        document.querySelectorAll(".planet-dot").forEach((dot, i) => {
+          dot.classList.toggle("focused", i === index);
+        });
+        // Showw focus ring at screen centre
+        const ring = document.getElementById("focus-ring");
+        ring.style.left = "50%";
+        ring.style.top = "50%";
+        ring.classList.add("visible");
+      }
+
+      function releaseFocus() {
+        focusedPlanetIndex = -1;
+        isFocusing = false;
+        document.getElementById("info-panel").classList.remove("visible");
+        document.getElementById("focus-ring").classList.remove("visible");
+        document
+          .querySelectorAll(".planet-dot")
+          .forEach((d) => d.classList.remove("focused"));
+      }
+
+      document
+        .getElementById("panel-close")
+        .addEventListener("click", releaseFocus);
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") releaseFocus();
+      });
+
+      // SIMULATION STATE
+
+      let timeScale = 1.0;
+      let showOrbits = true;
+      let showLabels = true;
+      let trueScale = false;
+
+      // Speed button wiring
+      document.getElementById("speed-btns").addEventListener("click", (e) => {
+        const btn = e.target.closest(".btn-speed");
+        if (!btn) return;
+        timeScale = parseFloat(btn.dataset.speed);
+        document
+          .querySelectorAll(".btn-speed")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const spd =
+          timeScale === 0
+            ? "PAUSE"
+            : timeScale >= 100000
+              ? "100K×"
+              : timeScale >= 10000
+                ? "10K×"
+                : timeScale >= 100
+                  ? "100×"
+                  : "1×";
+        document.getElementById("speed-display").textContent =
+          timeScale === 0 ? "||" : spd;
+      });
+
+      document
+        .getElementById("btn-orbits")
+        .addEventListener("click", function () {
+          showOrbits = !showOrbits;
+          this.classList.toggle("active", showOrbits);
+          planets.forEach((p) => {
+            p.orbitLine.visible = showOrbits;
+          });
+        });
+
+      document
+        .getElementById("btn-labels")
+        .addEventListener("click", function () {
+          showLabels = !showLabels;
+          this.classList.toggle("active", showLabels);
+          planets.forEach((p) => {
+            p.label.visible = showLabels;
+          });
+        });
+
+      // True Scale mode: swap between our visual radii and real AU-based radii.
+      const AU_SCALE = 120; // 1 AU = 120 scene units in true scale mode
+      const REF_EARTH_RADIUS_KM = 6371;
+      const VISUAL_EARTH_RADIUS = 2.0;
+
+      document
+        .getElementById("btn-scale")
+        .addEventListener("click", function () {
+          trueScale = !trueScale;
+          this.classList.toggle("active", trueScale);
+
+          planets.forEach((p) => {
+            const newOrbit = trueScale
+              ? p.data.realOrbitAU * AU_SCALE
+              : p.data.orbitRadius;
+
+            // Update orbit position
+            p.planetGroup.position.x = newOrbit;
+
+            // Scale the mesh
+            const scale = newRadius / p.data.radius;
+            p.mesh.scale.set(scale, scale, scale);
+            if (p.cloudMesh)
+              p.cloudMesh.scale.set(
+                scale * 1.015,
+                scale * 1.015,
+                scale * 1.015,
+              );
+
+            // Rebuild orbit line at new radius
+            p.orbitLine.visible = false;
+            scene.remove(p.orbitLine);
+            p.orbitLine = createOrbitLine(
+              newOrbit,
+              p.data.eccentricity,
+              p.data.inclination,
+            );
+            p.orbitLine.visible = showOrbits;
+            scene.add(p.orbitLine);
+          });
+
+          // In true scale, also scale the Sun
+          if (sunMesh) {
+            const sunRealRadius = 109 * VISUAL_EARTH_RADIUS; // Sun = 109 Earth radii
+            sunMesh.scale.set(
+              trueScale ? sunRealRadius / 12 : 1,
+              trueScale ? sunRealRadius / 12 : 1,
+              trueScale ? sunRealRadius / 12 : 1,
+            );
+          }
+        });
     </script>
   </body>
 </html>
