@@ -70,7 +70,7 @@
           visibility 0.8s ease;
       }
 
-      #loader-hidden {
+      #loader.hidden {
         opacity: 0;
         visibility: hidden;
       }
@@ -749,6 +749,13 @@
         },
       ];
 
+      // SIMULATION STATE
+
+      let timeScale = 1.0;
+      let showOrbits = true;
+      let showLabels = true;
+      let trueScale = false;
+
       // SCENE SETUP //
 
       const canvas = document.getElementById("canvas");
@@ -784,10 +791,10 @@
       controls.panSpeed = 0.8; // Mouse right-click pan speed
 
       // LIGHTING
-      //
+
       /* Pointlight is the Sun's position - primary lightsource for the scene
-                                AmbientLight prevents the night sides of planets being pure black.
-                              */
+      AmbientLight prevents the night sides of planets being pure black.
+      */
 
       const sunLight = new THREE.PointLight(0xfff4e0, 2.2, 0, 1);
       scene.add(sunLight);
@@ -853,14 +860,6 @@
       createStarField();
 
       // THE SUN
-      /*
-                            The Sun has three layers:
-                            1. Core sphere with the surface texture
-                            2. A subtle self-rotation animation (the real Sun rotates ~25 days)
-                            3. Glow sprites — THREE.Sprite objects with AdditiveBlending
-                               Additive blending means colours add to whatever's behind them,
-                               creating the "light leak" glow effect without any shader code.
-                          */
 
       const textureLoader = new THREE.TextureLoader();
       let loadedCount = 0;
@@ -952,8 +951,8 @@
 
       // PLANET GENERATOR
       /*
-                      Loop over PLANET_DATA and create a mesh for each planet.
-                      */
+                          Loop over PLANET_DATA and create a mesh for each planet.
+                          */
       const planets = []; // Array of planet objects with mesh, data, and orbital parameters
       const planetMeshes = []; // Just the meshes, for raycasting and interaction
 
@@ -1198,15 +1197,18 @@
         dot.className = "planet-dot";
         dot.textContent = p.data.name.slice(0, 3).toUpperCase();
         dot.title = p.data.name;
-        dot.addEventListener("click", () => focusPlanet(i));
+        dot.addEventListener("click", (e) => {
+          e.stopPropagation(); // ← prevents the click bubbling up to document
+          focusPlanet(i);
+        });
         nav.appendChild(dot);
       });
 
       // Raycasting //
       /*
-                      Raycasting is used to detect which planet the user is clicking on or hovering over.
-                      We cast a ray from the camera through the mouse position and see which planet meshes it intersects.
-                    */
+                          Raycasting is used to detect which planet the user is clicking on or hovering over.
+                          We cast a ray from the camera through the mouse position and see which planet meshes it intersects.
+                        */
 
       const raycaster = new THREE.Raycaster();
       const mouseNDC = new THREE.Vector2(-99, -99); // Normalized Device Coordinates of mouse, initialized off-screen
@@ -1230,16 +1232,19 @@
           const name = hits[0].object.userData.name;
           const index = planets.findIndex((p) => p.data.name === name);
           if (index !== -1) focusPlanet(index);
-        } else if (document.getElementById("info-panel").contains(e.target)) {
+        } else if (
+          !document.getElementById("info-panel").contains(e.target) &&
+          !document.getElementById("planet-nav").contains(e.target)
+        ) {
           releaseFocus();
         }
       });
 
       // CAMERA FOCUS SYSTEM
       /*
-              When a planet is clicked, we want the camera to smoothly travel
-            to a position orbiting that planet
-              */
+                  When a planet is clicked, we want the camera to smoothly travel
+                to a position orbiting that planet
+                  */
       let focusedPlanetIndex = -1;
       let isFocusing = false; // Whether we're currently in the process of moving the camera to a planet
       const focusTarget = new THREE.Vector3(); // The point the camera orbits around when focused
@@ -1249,11 +1254,11 @@
         isFocusing = true;
 
         const p = planets[index];
-        const r = planets.data.radius;
+        const r = p.data.radius;
 
         // Update UI
         const panel = document.getElementById("info-panel");
-        const d = planets.data.info;
+        const d = p.data.info;
         document.getElementById("panel-name").textContent = p.data.name;
         document.getElementById("panel-diameter").textContent = d.diameter;
         document.getElementById("panel-mass").textContent = d.mass;
@@ -1292,13 +1297,6 @@
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") releaseFocus();
       });
-
-      // SIMULATION STATE
-
-      let timeScale = 1.0;
-      let showOrbits = true;
-      let showLabels = true;
-      let trueScale = false;
 
       // Speed button wiring
       document.getElementById("speed-btns").addEventListener("click", (e) => {
@@ -1359,6 +1357,11 @@
               ? p.data.realOrbitAU * AU_SCALE
               : p.data.orbitRadius;
 
+            const realRatio = p.data.realRadiusKm / REF_EARTH_RADIUS_KM;
+            const newRadius = trueScale
+              ? VISUAL_EARTH_RADIUS * realRatio
+              : p.data.radius;
+
             // Update orbit position
             p.planetGroup.position.x = newOrbit;
 
@@ -1413,7 +1416,7 @@
 
         // PLANET ORBITAL MECHANICS
         planets.forEach((p) => {
-          if (timescale === 0) return; // Paused
+          if (timeScale === 0) return; // Paused
           // Angular velocity in radians per day
           const omega = (2 * Math.PI) / p.data.orbitalPeriod;
           // Advanceorbital angle based on time elapsed and timeScale
@@ -1437,7 +1440,60 @@
               ((2 * Math.PI) / 27.32) * deltaDays * timeScale;
           }
         });
+
+        // Raycaster for hover tooltips
+        raycaster.setFromCamera(mouseNDC, camera);
+        const hits = raycaster.intersectObjects(planetMeshes);
+        if (hits.length > 0) {
+          const name = hits[0].object.userData.name;
+          if (name !== hoveredPlanet) {
+            hoveredPlanet = name;
+            tooltip.textContent = name;
+            tooltip.classList.add("visible");
+            document.body.style.cursor = "pointer";
+          }
+        } else {
+          hoveredPlanet = null;
+          tooltip.classList.remove("visible");
+          document.body.style.cursor = "crosshair";
+        }
+
+        // CAMERA FOCUS LERP
+        if (focusedPlanetIndex >= 0) {
+          const p = planets[focusedPlanetIndex];
+
+          // Get the current world position of the planet
+          p.mesh.getWorldPosition(focusTarget);
+
+          // Desired camera position is offset from the planet's current position
+          const desiredCamPos = focusTarget.clone().add(focusCamOffset);
+
+          // Lerp camera position and lookAt target for smooth movement
+          camera.position.lerp(desiredCamPos, isFocusing ? 0.05 : 0.2);
+
+          // Lerp OrbitControls target so orbit rotates around the planet
+          controls.target.lerp(focusTarget, isFocusing ? 0.06 : 0.025);
+
+          // Once we're close enough, stop the initial focusing animation
+          if (isFocusing && camera.position.distanceTo(desiredCamPos) < 2) {
+            isFocusing = false;
+          }
+        }
+
+        // ── UPDATE CONTROLS (must call every frame when damping enabled) ──
+        controls.update();
+
+        // RENDER THE SCENE
+        renderer.render(scene, camera);
       }
+      animate();
+
+      // RESIZE HANDLER
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
     </script>
   </body>
 </html>
