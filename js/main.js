@@ -1,21 +1,7 @@
 // Main JavaScript code for the Solar System Explorer
-// This will include:
-// - Initialization of Three.js scene, camera, and renderer
-// - Loading of planetary textures and data
-// - Creation of planet meshes and orbits
-// - Implementation of controls (orbit, zoom, focus)
-// - UI interactions (info panel, tooltips, time scale)
-// - Animation loop to update planet positions based on time scale
-
-// Due to the complexity of the full implementation, the code is structured in a modular way with functions handling specific tasks. The main flow includes:
-
-// 1. Setting up the Three.js scene and camera
-// 2. Loading textures and planetary data asynchronously
-// 3. Creating planet objects and adding them to the scene
-// 4. Implementing user interactions for focusing on planets and displaying info
-// 5. Managing time scale adjustments and updating planet positions accordingly
-
-// Planetary data array with real and visual parameters for each planet
+// Planet textures © Solar System Scope (www.solarsystemscope.com)
+// Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+// Original assets: https://www.solarsystemscope.com/textures/
 
 const PLANET_DATA = [
   // Planet data from NASA's planetary fact sheets and other sources, with some tuning for visual appeal
