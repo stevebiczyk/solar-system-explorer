@@ -1,0 +1,961 @@
+// Main JavaScript code for the Solar System Explorer
+// This will include:
+// - Initialization of Three.js scene, camera, and renderer
+// - Loading of planetary textures and data
+// - Creation of planet meshes and orbits
+// - Implementation of controls (orbit, zoom, focus)
+// - UI interactions (info panel, tooltips, time scale)
+// - Animation loop to update planet positions based on time scale
+
+// Due to the complexity of the full implementation, the code is structured in a modular way with functions handling specific tasks. The main flow includes:
+
+// 1. Setting up the Three.js scene and camera
+// 2. Loading textures and planetary data asynchronously
+// 3. Creating planet objects and adding them to the scene
+// 4. Implementing user interactions for focusing on planets and displaying info
+// 5. Managing time scale adjustments and updating planet positions accordingly
+
+// Planetary data array with real and visual parameters for each planet
+
+const PLANET_DATA = [
+  // Planet data from NASA's planetary fact sheets and other sources, with some tuning for visual appeal
+  {
+    name: "Mercury",
+    // Visual (scene) units — these are tuned, not real
+    orbitRadius: 28,
+    radius: 0.8,
+    // Real data for "true scale" toggle (AU × 60 for scene units)
+    realOrbitAU: 0.387,
+    realRadiusKm: 2439,
+    // Orbital mechanics
+    orbitalPeriod: 87.97, // Earth days for one full orbit
+    eccentricity: 0.206, // How elliptical (0=circle, 1=parabola)
+    inclination: 7.0, // Degrees off the ecliptic plane
+    axialTilt: 0.034, // Degrees of axial tilt
+    rotationPeriod: 58.65, // Earth days for one self-rotation
+    startAngle: Math.random() * Math.PI * 2,
+    // Texture URL
+    texture: "./textures/2k_mercury.jpg",
+    color: 0x8c8c8c, // Fallback colour if texture fails
+    // Info panel display data
+    info: {
+      diameter: "4,879 km",
+      mass: "3.30 × 10²³ kg",
+      dist: "0.39 AU",
+      period: "87.97 days",
+      day: "58.65 days",
+      temp: "167°C avg",
+      moons: "0",
+      desc: "The smallest planet and closest to the Sun. Its surface is heavily cratered and reaches extreme temperatures — from −173°C at night to 427°C in the day.",
+    },
+  },
+  {
+    name: "Venus",
+    orbitRadius: 44,
+    radius: 1.9,
+    realOrbitAU: 0.723,
+    realRadiusKm: 6052,
+    orbitalPeriod: 224.7,
+    eccentricity: 0.007,
+    inclination: 3.4,
+    axialTilt: 177.4, // Retrograde rotation!
+    rotationPeriod: -243.02, // Negative = retrograde
+    startAngle: Math.random() * Math.PI * 2,
+    texture: "./textures/2k_venus_surface.jpg",
+    color: 0xe8c070,
+    info: {
+      diameter: "12,104 km",
+      mass: "4.87 × 10²⁴ kg",
+      dist: "0.72 AU",
+      period: "224.7 days",
+      day: "243 days (retrograde)",
+      temp: "464°C avg",
+      moons: "0",
+      desc: "The hottest planet despite not being the closest to the Sun. A thick CO₂ atmosphere creates a runaway greenhouse effect. It rotates backwards relative to most planets.",
+    },
+  },
+  {
+    name: "Earth",
+    orbitRadius: 60,
+    radius: 2.0,
+    realOrbitAU: 1.0,
+    realRadiusKm: 6371,
+    orbitalPeriod: 365.25,
+    eccentricity: 0.017,
+    inclination: 0.0,
+    axialTilt: 23.44,
+    rotationPeriod: 1.0,
+    startAngle: Math.random() * Math.PI * 2,
+    texture: "./textures/2k_earth.jpg",
+    cloudTexture: "./textures/2k_earth_clouds.jpg",
+    color: 0x2266aa,
+    hasMoon: true,
+    info: {
+      diameter: "12,742 km",
+      mass: "5.97 × 10²⁴ kg",
+      dist: "1.00 AU",
+      period: "365.25 days",
+      day: "24 hours",
+      temp: "15°C avg",
+      moons: "1 (Luna)",
+      desc: "Our home. The only known planet harbouring life. Its large moon stabilises axial tilt, its magnetic field deflects solar wind, and its water cycle regulates temperature.",
+    },
+  },
+  {
+    name: "Mars",
+    orbitRadius: 80,
+    radius: 1.1,
+    realOrbitAU: 1.524,
+    realRadiusKm: 3390,
+    orbitalPeriod: 686.97,
+    eccentricity: 0.093,
+    inclination: 1.85,
+    axialTilt: 25.19,
+    rotationPeriod: 1.026,
+    startAngle: Math.random() * Math.PI * 2,
+    texture: "./textures/2k_mars.jpg",
+    color: 0xc1440e,
+    info: {
+      diameter: "6,779 km",
+      mass: "6.39 × 10²³ kg",
+      dist: "1.52 AU",
+      period: "686.97 days",
+      day: "24h 37m",
+      temp: "−63°C avg",
+      moons: "2 (Phobos, Deimos)",
+      desc: "The Red Planet. Home to Olympus Mons — the tallest volcano in the solar system at 21.9 km. Mars has seasons similar to Earth due to its comparable axial tilt.",
+    },
+  },
+  {
+    name: "Jupiter",
+    orbitRadius: 120,
+    radius: 8.0,
+    realOrbitAU: 5.203,
+    realRadiusKm: 69911,
+    orbitalPeriod: 4332.59,
+    eccentricity: 0.049,
+    inclination: 1.3,
+    axialTilt: 3.13,
+    rotationPeriod: 0.41, // Fastest rotation in the solar system
+    startAngle: Math.random() * Math.PI * 2,
+    texture: "./textures/2k_jupiter.jpg",
+    color: 0xc88b3a,
+    info: {
+      diameter: "139,820 km",
+      mass: "1.90 × 10²⁷ kg",
+      dist: "5.20 AU",
+      period: "11.86 years",
+      day: "9h 56m",
+      temp: "−108°C avg",
+      moons: "95 (known)",
+      desc: "The largest planet — so massive all other planets could fit inside it. The Great Red Spot is a storm larger than Earth that has raged for at least 350 years.",
+    },
+  },
+  {
+    name: "Saturn",
+    orbitRadius: 165,
+    radius: 6.8,
+    realOrbitAU: 9.537,
+    realRadiusKm: 58232,
+    orbitalPeriod: 10759.22,
+    eccentricity: 0.057,
+    inclination: 2.49,
+    axialTilt: 26.73,
+    rotationPeriod: 0.44,
+    startAngle: Math.random() * Math.PI * 2,
+    texture: "./textures/2k_saturn.jpg",
+    ringTexture: "./textures/2k_saturn_ring.png",
+    color: 0xe4d191,
+    hasRings: true,
+    info: {
+      diameter: "116,460 km",
+      mass: "5.68 × 10²⁶ kg",
+      dist: "9.54 AU",
+      period: "29.46 years",
+      day: "10h 42m",
+      temp: "−139°C avg",
+      moons: "146 (known)",
+      desc: "Famous for its spectacular ring system made of ice and rock ranging from tiny grains to house-sized chunks. Saturn is the least dense planet — it would float on water.",
+    },
+  },
+  {
+    name: "Uranus",
+    orbitRadius: 210,
+    radius: 3.8,
+    realOrbitAU: 19.191,
+    realRadiusKm: 25362,
+    orbitalPeriod: 30688.5,
+    eccentricity: 0.046,
+    inclination: 0.77,
+    axialTilt: 97.77, // Rotates on its side!
+    rotationPeriod: -0.72, // Retrograde
+    startAngle: Math.random() * Math.PI * 2,
+    texture: "./textures/2k_uranus.jpg",
+    color: 0x7de8e8,
+    hasRings: true,
+    ringColor: 0x4a8a8a,
+    info: {
+      diameter: "50,724 km",
+      mass: "8.68 × 10²⁵ kg",
+      dist: "19.19 AU",
+      period: "84.01 years",
+      day: "17h 14m (retrograde)",
+      temp: "−197°C avg",
+      moons: "28 (known)",
+      desc: "An ice giant that rotates on its side — its axial tilt of 98° means its poles point almost directly at the Sun. Likely knocked over by a massive impact early in solar system history.",
+    },
+  },
+  {
+    name: "Neptune",
+    orbitRadius: 260,
+    radius: 3.6,
+    realOrbitAU: 30.07,
+    realRadiusKm: 24622,
+    orbitalPeriod: 60182.0,
+    eccentricity: 0.01,
+    inclination: 1.77,
+    axialTilt: 28.32,
+    rotationPeriod: 0.67,
+    startAngle: Math.random() * Math.PI * 2,
+    texture: "./textures/2k_neptune.jpg",
+    color: 0x3f54ba,
+    info: {
+      diameter: "49,244 km",
+      mass: "1.02 × 10²⁶ kg",
+      dist: "30.07 AU",
+      period: "164.8 years",
+      day: "16h 6m",
+      temp: "−201°C avg",
+      moons: "16 (known)",
+      desc: "The windiest planet — supersonic winds up to 2,100 km/h. Neptune has never completed a full orbit since its discovery in 1846. Its largest moon Triton orbits backwards.",
+    },
+  },
+];
+
+// SIMULATION STATE
+
+let timeScale = 1.0;
+let showOrbits = true;
+let showLabels = true;
+let trueScale = false;
+
+// SCENE SETUP //
+
+const canvas = document.getElementById("canvas");
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  powerPreference: "high-performance",
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = false; // Shadows can be performance-heavy, will use lighting instead
+renderer.outputEncoding = THREE.sRGBEncoding; // Better color rendering for textures
+
+// The scene is the container for all 3D objects
+const scene = new THREE.Scene();
+// A perspective camera simulates human vision
+const camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  100000,
+);
+camera.position.set(0, 80, 200); // Start with a good view of the planets
+camera.lookAt(0, 0, 0); // Look at the center of the scene where the Sun will be
+// OrbitControls allow the user to rotate around a target point
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; // Smooth momentum after releasing mouse
+controls.dampingFactor = 0.06; // Damping inertia — higher is snappier
+controls.minDistance = 3; // Can't zoom closer than this to target
+controls.maxDistance = 3000; // Can't zoom farther than this
+controls.zoomSpeed = 1.2; // Mouse wheel zoom speed
+controls.rotateSpeed = 0.5; // Mouse drag rotation speed
+controls.panSpeed = 0.8; // Mouse right-click pan speed
+
+// LIGHTING
+
+/* Pointlight is the Sun's position - primary lightsource for the scene
+      AmbientLight prevents the night sides of planets being pure black.
+      */
+
+const sunLight = new THREE.PointLight(0xfff4e0, 2.2, 0, 1);
+scene.add(sunLight);
+
+const ambientLight = new THREE.AmbientLight(0x111122, 0.6);
+scene.add(ambientLight);
+
+// STAR FIELD BACKGROUND //
+//
+/* A large sphere with a star texture mapped on the inside creates an immersive backdrop */
+function createStarField() {
+  const count = 10000;
+  const positions = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const colors = new Float32Array(count * 3);
+
+  const colorPalette = [
+    new THREE.Color(0xffffff), // white
+    new THREE.Color(0xfff4e0), // warm white
+    new THREE.Color(0xaad4ff), // blue-white
+    new THREE.Color(0xffddaa), // orange
+    new THREE.Color(0xffe0c0), // pale yellow
+  ];
+
+  for (let i = 0; i < count; i++) {
+    // Random point on sphere surface using spherical coordinates
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(Math.random() * 2 - 1);
+    const r = 5000 + Math.random() * 1000;
+
+    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+    positions[i * 3 + 2] = r * Math.cos(phi);
+
+    // Exponential distribution: most stars are small/dim
+    sizes[i] =
+      Math.random() < 0.02
+        ? 2.5 + Math.random() * 1.5 // 2% are bright large stars
+        : 0.5 + Math.random() * 1.0; // rest are tiny
+
+    const col = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+    colors[i * 3] = col.r;
+    colors[i * 3 + 1] = col.g;
+    colors[i * 3 + 2] = col.b;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+  const mat = new THREE.PointsMaterial({
+    size: 1.2,
+    vertexColors: true,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.9,
+  });
+
+  scene.add(new THREE.Points(geo, mat));
+}
+
+createStarField();
+
+// THE SUN
+
+const textureLoader = new THREE.TextureLoader();
+let loadedCount = 0;
+let totalAssets = 0;
+
+function registerAsset() {
+  totalAssets++;
+}
+
+function updateLoader(msg) {
+  loadedCount++;
+  // Guard: never show > 100%, never dismiss until ALL registered assets resolve
+  const pct =
+    totalAssets > 0
+      ? Math.min(100, Math.round((loadedCount / totalAssets) * 100))
+      : 0;
+  document.getElementById("loader-bar").style.width = pct + "%";
+  document.getElementById("loader-status").textContent =
+    msg || `LOADING ASSETS ${pct}%`;
+  // Only dismiss when every registered asset has reported back
+  if (loadedCount >= totalAssets && totalAssets > 0) {
+    setTimeout(() => {
+      document.getElementById("loader").classList.add("hidden");
+      setTimeout(() => {
+        document.getElementById("hints").classList.add("hidden");
+      }, 8000);
+    }, 600);
+  }
+}
+
+let sunMesh;
+function createSun() {
+  const sunGeo = new THREE.SphereGeometry(12, 64, 64);
+
+  registerAsset();
+  textureLoader.load(
+    "./textures/2k_sun.jpg",
+    (tex) => {
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        // MeshBasicMaterial ignores lights — the Sun emits its own light
+      });
+      sunMesh = new THREE.Mesh(sunGeo, mat);
+      scene.add(sunMesh);
+      updateLoader("SUN SURFACE LOADED");
+    },
+    undefined,
+    () => {
+      // Fallback if texture fails to load
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+      sunMesh = new THREE.Mesh(sunGeo, mat);
+      scene.add(sunMesh);
+      updateLoader("SUN FALLBACK");
+    },
+  );
+
+  // Glow layers
+  function addGlowSprite(size, color, opacity) {
+    // Create a canvas gradient as the glow texture
+    const glowCanvas = document.createElement("canvas");
+    glowCanvas.width = glowCanvas.height = 256;
+    const ctx = glowCanvas.getContext("2d");
+    const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0, `rgba(255,240,160,${opacity})`);
+    grad.addColorStop(0.2, `rgba(255,200,80,${opacity * 0.6})`);
+    grad.addColorStop(0.5, `rgba(255,140,20,${opacity * 0.2})`);
+    grad.addColorStop(1.0, "rgba(0,0,0,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+
+    const tex = new THREE.CanvasTexture(glowCanvas);
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false, // Glow doesn't write to depth buffer (won't block other objects)
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(size, size, 1);
+    scene.add(sprite);
+  }
+
+  addGlowSprite(60, 0xffee88, 0.8); // Tight inner glow
+  addGlowSprite(120, 0xff9900, 0.4); // Mid corona
+  addGlowSprite(220, 0xff6600, 0.15); // Far diffuse halo
+}
+
+createSun();
+
+// PLANET GENERATOR
+/*
+                          Loop over PLANET_DATA and create a mesh for each planet.
+                          */
+const planets = []; // Array of planet objects with mesh, data, and orbital parameters
+const planetMeshes = []; // Just the meshes, for raycasting and interaction
+
+// Orbit line visualisation
+function createOrbitLine(radius, eccentricity, inclination, color) {
+  const a = radius; // Semi-major axis
+  const b = radius * Math.sqrt(1 - eccentricity * eccentricity); // Semi-minor axis
+
+  const curve = new THREE.EllipseCurve(
+    0,
+    0, // Center at origin
+    a,
+    b, // Radii
+    0,
+    Math.PI * 2, // Start and end angles
+    false, // Clockwise
+    0, // Rotation (will apply inclination later)
+  );
+
+  const points = curve.getPoints(256);
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineBasicMaterial({
+    color: color || 0x334455,
+    transparent: true,
+    opacity: 0.4,
+  });
+  const line = new THREE.LineLoop(geometry, material);
+  line.rotation.x = THREE.MathUtils.degToRad(inclination); // Rotate to match orbital inclination
+  return line;
+}
+
+// Floating label above each planet
+function createLabel(name) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  ctx.font = "500 20px Orbitron, monospace";
+  ctx.fillStyle = "rgba(232, 160, 32, 0.9)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(name.toUpperCase(), 128, 32);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+    sizeAttenuation: true,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(14, 3.5, 1);
+  return sprite;
+}
+
+// Moon helper (Earth's moon only)
+function createMoon(parentGroup) {
+  const moonGeo = new THREE.SphereGeometry(0.5, 32, 32);
+  const moonMat = new THREE.MeshStandardMaterial({
+    color: 0xaaaaaa,
+    roughness: 0.9,
+  });
+  const moon = new THREE.Mesh(moonGeo, moonMat);
+
+  // Moon pivot inside the planet group
+  const moonPivot = new THREE.Object3D();
+  moonPivot.add(moon);
+  moon.position.x = 4; // Average distance from Earth to Moon in scene units
+  parentGroup.add(moonPivot);
+
+  return moonPivot;
+}
+
+// Build all planets based on data
+PLANET_DATA.forEach((data) => {
+  // Orbit pivot — sits at scene origin, rotated to move planet
+  const orbitPivot = new THREE.Object3D();
+  orbitPivot.rotation.x = THREE.MathUtils.degToRad(data.inclination);
+  scene.add(orbitPivot);
+
+  // Planet group — allows for axial tilt and self-rotation
+  const planetGroup = new THREE.Object3D();
+  planetGroup.position.x = data.orbitRadius;
+  scene.add(planetGroup);
+
+  // Planet sphere geometry - more segments = smoother sphere but worse performance, so 64 is a good balance for close-up viewing
+  const geo = new THREE.SphereGeometry(data.radius, 64, 64);
+
+  // Material - placeholder, replaced when texture loads
+  const mat = new THREE.MeshStandardMaterial({
+    color: data.color,
+    roughness: 1.0,
+    metalness: 0.0,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt); // Apply axial tilt
+  mesh.userData = { name: data.name, info: data.info }; // Store reference to planet data for interaction
+  planetGroup.add(mesh);
+  planetMeshes.push(mesh); // Add to array for raycasting
+
+  // Load texture asynchronously
+  registerAsset();
+  textureLoader.load(
+    data.texture,
+    (tex) => {
+      tex.encoding = THREE.sRGBEncoding; // Ensure correct color space
+      mat.map = tex;
+      mat.color.set(0xffffff); // Reset color to white once texture is applied
+      mat.needsUpdate = true;
+      updateLoader(`${data.name.toUpperCase()} LOADED`);
+    },
+    undefined,
+    () => {
+      updateLoader(`${data.name.toUpperCase()} TEXTURE FAILED`);
+    },
+  );
+
+  // Cloud layer for Earth
+  let cloudMesh = null;
+  if (data.cloudTexture) {
+    const cloudGeo = new THREE.SphereGeometry(data.radius * 1.02, 64, 64);
+    const cloudMat = new THREE.MeshStandardMaterial({
+      transparent: true,
+      opacity: 0.8,
+      depthWrite: false,
+    });
+    cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+    cloudMesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt);
+    planetGroup.add(cloudMesh);
+
+    registerAsset();
+    textureLoader.load(
+      data.cloudTexture,
+      (tex) => {
+        tex.encoding = THREE.sRGBEncoding;
+        cloudMat.map = tex;
+        cloudMat.needsUpdate = true;
+        updateLoader(`${data.name.toUpperCase()} CLOUDS LOADED`);
+      },
+      undefined,
+      () => {
+        updateLoader(`${data.name.toUpperCase()} CLOUDS FAILED`);
+      },
+    );
+  }
+
+  // Saturn / Uranus rings
+  let ringMesh = null;
+  if (data.hasRings) {
+    const innerRadius = data.radius * 1.4;
+    const outerRadius = data.radius * 2.5;
+    const ringGeo = new THREE.RingGeometry(innerRadius, outerRadius, 128);
+
+    /* RingGeometry flatness fix - mapping texture coordinates radially */
+    const pos = ringGeo.attributes.position;
+    const uv = ringGeo.attributes.uv;
+    const v3 = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v3.fromBufferAttribute(pos, i);
+      uv.setXY(i, v3.length() < (innerRadius + outerRadius) / 2 ? 0 : 1, 1);
+    }
+
+    if (data.ringTexture) {
+      const ringMat = new THREE.MeshBasicMaterial({
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+      });
+      ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = Math.PI / 2; // Rotate flat
+      ringMesh.rotation.z = THREE.MathUtils.degToRad(data.axialTilt - 90); // Align with planet's tilt
+      planetGroup.add(ringMesh);
+
+      registerAsset();
+      textureLoader.load(data.ringTexture, (tex) => {
+        ringMat.map = tex;
+        ringMat.alphaMap = tex; // Use the same texture for alpha transparency
+        ringMat.needsUpdate = true;
+        updateLoader(`${data.name.toUpperCase()} RINGS LOADED`);
+      });
+    } else {
+      // Uranus — simple coloured ring
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: data.ringColor || 0x4a6060,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.3,
+        depthWrite: false,
+      });
+      ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = Math.PI / 2;
+      planetGroup.add(ringMesh);
+      updateLoader(`${data.name.toUpperCase()} RINGS`);
+    }
+  }
+
+  // Orbit Line
+  const orbitLine = createOrbitLine(
+    data.orbitRadius,
+    data.eccentricity,
+    data.inclination,
+    0x334455,
+  );
+  scene.add(orbitLine);
+
+  // Label sprite
+  const label = createLabel(data.name);
+  label.position.y = data.radius + 2.5;
+  planetGroup.add(label);
+
+  // Moon - Earth only
+  const moonPivot = data.hasMoon ? createMoon(planetGroup) : null;
+
+  // Store everything we need to animate this planet
+  planets.push({
+    data,
+    orbitPivot,
+    planetGroup,
+    mesh,
+    cloudMesh,
+    ringMesh,
+    orbitLine,
+    label,
+    moonPivot,
+    // Current orbital angle (starts at a random position)
+    angle: data.startAngle,
+    // Screen-space position for UI dot highlighting
+    screenPos: new THREE.Vector3(),
+  });
+});
+
+// Build the planet quick-nav strip
+
+const nav = document.getElementById("planet-nav");
+planets.forEach((p, i) => {
+  const dot = document.createElement("div");
+  dot.className = "planet-dot";
+  dot.textContent = p.data.name.slice(0, 3).toUpperCase();
+  dot.title = p.data.name;
+  dot.addEventListener("click", (e) => {
+    e.stopPropagation(); // ← prevents the click bubbling up to document
+    focusPlanet(i);
+  });
+  nav.appendChild(dot);
+});
+
+// Raycasting //
+/*
+                          Raycasting is used to detect which planet the user is clicking on or hovering over.
+                          We cast a ray from the camera through the mouse position and see which planet meshes it intersects.
+                        */
+
+const raycaster = new THREE.Raycaster();
+const mouseNDC = new THREE.Vector2(-99, -99); // Normalized Device Coordinates of mouse, initialized off-screen
+const tooltip = document.getElementById("tooltip");
+let hoveredPlanet = null; // Index of currently hovered planet for tooltip
+
+document.addEventListener("mousemove", (e) => {
+  // Convert mouse position to Normalized Device Coordinates (-1 to +1)
+  mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  // Move the tooltip to follow the mouse
+  tooltip.style.left = e.clientX + 16 + "px";
+  tooltip.style.top = e.clientY + 8 + "px";
+});
+
+document.addEventListener("click", (e) => {
+  raycaster.setFromCamera(mouseNDC, camera);
+  const hits = raycaster.intersectObjects(planetMeshes);
+  if (hits.length > 0) {
+    const name = hits[0].object.userData.name;
+    const index = planets.findIndex((p) => p.data.name === name);
+    if (index !== -1) focusPlanet(index);
+  } else if (
+    !document.getElementById("info-panel").contains(e.target) &&
+    !document.getElementById("planet-nav").contains(e.target)
+  ) {
+    releaseFocus();
+  }
+});
+
+// CAMERA FOCUS SYSTEM
+/*
+                  When a planet is clicked, we want the camera to smoothly travel
+                to a position orbiting that planet
+                  */
+let focusedPlanetIndex = -1;
+let isFocusing = false; // Whether we're currently in the process of moving the camera to a planet
+const focusTarget = new THREE.Vector3(); // The point the camera orbits around when focused
+const focusCamOffset = new THREE.Vector3(); // The offset from the focus target where the camera should be positioned when focused
+function focusPlanet(index) {
+  focusedPlanetIndex = index;
+  isFocusing = true;
+
+  const p = planets[index];
+  const r = p.data.radius;
+
+  // Update UI
+  const panel = document.getElementById("info-panel");
+  const d = p.data.info;
+  document.getElementById("panel-name").textContent = p.data.name;
+  document.getElementById("panel-diameter").textContent = d.diameter;
+  document.getElementById("panel-mass").textContent = d.mass;
+  document.getElementById("panel-dist").textContent = d.dist;
+  document.getElementById("panel-period").textContent = d.period;
+  document.getElementById("panel-day").textContent = d.day;
+  document.getElementById("panel-temp").textContent = d.temp;
+  document.getElementById("panel-moons").textContent = d.moons;
+  document.getElementById("panel-desc").textContent = d.desc;
+  panel.classList.add("visible");
+
+  // Update nav dots
+  document.querySelectorAll(".planet-dot").forEach((dot, i) => {
+    dot.classList.toggle("focused", i === index);
+  });
+  // Showw focus ring at screen centre
+  const ring = document.getElementById("focus-ring");
+  ring.style.left = "50%";
+  ring.style.top = "50%";
+  ring.classList.add("visible");
+}
+
+function releaseFocus() {
+  focusedPlanetIndex = -1;
+  isFocusing = false;
+  document.getElementById("info-panel").classList.remove("visible");
+  document.getElementById("focus-ring").classList.remove("visible");
+  document
+    .querySelectorAll(".planet-dot")
+    .forEach((d) => d.classList.remove("focused"));
+}
+
+document.getElementById("panel-close").addEventListener("click", releaseFocus);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") releaseFocus();
+});
+
+// Speed button wiring
+document.getElementById("speed-btns").addEventListener("click", (e) => {
+  const btn = e.target.closest(".btn-speed");
+  if (!btn) return;
+  timeScale = parseFloat(btn.dataset.speed);
+  document
+    .querySelectorAll(".btn-speed")
+    .forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  const spd =
+    timeScale === 0
+      ? "PAUSE"
+      : timeScale >= 100000
+        ? "100K×"
+        : timeScale >= 10000
+          ? "10K×"
+          : timeScale >= 100
+            ? "100×"
+            : "1×";
+  document.getElementById("speed-display").textContent =
+    timeScale === 0 ? "||" : spd;
+});
+
+document.getElementById("btn-orbits").addEventListener("click", function () {
+  showOrbits = !showOrbits;
+  this.classList.toggle("active", showOrbits);
+  planets.forEach((p) => {
+    p.orbitLine.visible = showOrbits;
+  });
+});
+
+document.getElementById("btn-labels").addEventListener("click", function () {
+  showLabels = !showLabels;
+  this.classList.toggle("active", showLabels);
+  planets.forEach((p) => {
+    p.label.visible = showLabels;
+  });
+});
+
+// True Scale mode: swap between our visual radii and real AU-based radii.
+const AU_SCALE = 120; // 1 AU = 120 scene units in true scale mode
+const REF_EARTH_RADIUS_KM = 6371;
+const VISUAL_EARTH_RADIUS = 2.0;
+
+document.getElementById("btn-scale").addEventListener("click", function () {
+  trueScale = !trueScale;
+  this.classList.toggle("active", trueScale);
+
+  planets.forEach((p) => {
+    const newOrbit = trueScale
+      ? p.data.realOrbitAU * AU_SCALE
+      : p.data.orbitRadius;
+
+    const realRatio = p.data.realRadiusKm / REF_EARTH_RADIUS_KM;
+    const newRadius = trueScale
+      ? VISUAL_EARTH_RADIUS * realRatio
+      : p.data.radius;
+
+    // Update orbit position
+    p.planetGroup.position.x = newOrbit;
+
+    // Scale the mesh
+    const scale = newRadius / p.data.radius;
+    p.mesh.scale.set(scale, scale, scale);
+    if (p.cloudMesh)
+      p.cloudMesh.scale.set(scale * 1.015, scale * 1.015, scale * 1.015);
+
+    // Rebuild orbit line at new radius
+    p.orbitLine.visible = false;
+    scene.remove(p.orbitLine);
+    p.orbitLine = createOrbitLine(
+      newOrbit,
+      p.data.eccentricity,
+      p.data.inclination,
+    );
+    p.orbitLine.visible = showOrbits;
+    scene.add(p.orbitLine);
+  });
+
+  // In true scale, also scale the Sun
+  if (sunMesh) {
+    const sunRealRadius = 109 * VISUAL_EARTH_RADIUS; // Sun = 109 Earth radii
+    sunMesh.scale.set(
+      trueScale ? sunRealRadius / 12 : 1,
+      trueScale ? sunRealRadius / 12 : 1,
+      trueScale ? sunRealRadius / 12 : 1,
+    );
+  }
+});
+
+// ANIMATION LOOP
+/* The render loop is driven by requestAnimationFrame, which calls the provided function before the next repaint. We update planet positions based on their orbital periods and the elapsed time.
+ */
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+
+  const delta = clock.getDelta(); // seconds since last frame
+  const deltaDays = delta / 86400; // Convert to days (assuming 1 unit of timeScale = 1 day)
+
+  // Sun rotation
+  if (sunMesh) {
+    sunMesh.rotation.y += delta * 0.004 * Math.max(1, timeScale * 0.0001);
+  }
+
+  // PLANET ORBITAL MECHANICS
+  planets.forEach((p) => {
+    if (timeScale === 0) return; // Paused
+    // Angular velocity in radians per day
+    const omega = (2 * Math.PI) / p.data.orbitalPeriod;
+    // Advanceorbital angle based on time elapsed and timeScale
+    p.angle += omega * deltaDays * timeScale;
+    // Elliptical orbit position from angle
+    p.orbitPivot.rotation.y = p.angle;
+
+    // Self-rotation around polar axis
+    const rotOmega = (2 * Math.PI) / Math.abs(p.data.rotationPeriod);
+    const rotDir = p.data.rotationPeriod > 0 ? 1 : -1;
+    p.mesh.rotation.y += rotOmega * deltaDays * timeScale * rotDir * 0.1;
+    // Cloud layer rotates slightly faster than the planet
+    if (p.cloudMesh) {
+      p.cloudMesh.rotation.y +=
+        rotOmega * deltaDays * timeScale * rotDir * 0.12;
+    }
+
+    // Moon orbits Earth
+    if (p.moonPivot) {
+      p.moonPivot.rotation.y += ((2 * Math.PI) / 27.32) * deltaDays * timeScale;
+    }
+  });
+
+  // Raycaster for hover tooltips
+  raycaster.setFromCamera(mouseNDC, camera);
+  const hits = raycaster.intersectObjects(planetMeshes);
+  if (hits.length > 0) {
+    const name = hits[0].object.userData.name;
+    if (name !== hoveredPlanet) {
+      hoveredPlanet = name;
+      tooltip.textContent = name;
+      tooltip.classList.add("visible");
+      document.body.style.cursor = "pointer";
+    }
+  } else {
+    hoveredPlanet = null;
+    tooltip.classList.remove("visible");
+    document.body.style.cursor = "crosshair";
+  }
+
+  // CAMERA FOCUS LERP
+  if (focusedPlanetIndex >= 0) {
+    const p = planets[focusedPlanetIndex];
+
+    // Get the current world position of the planet
+    p.mesh.getWorldPosition(focusTarget);
+
+    // Desired camera position is offset from the planet's current position
+    const desiredCamPos = focusTarget.clone().add(focusCamOffset);
+
+    // Lerp camera position and lookAt target for smooth movement
+    camera.position.lerp(desiredCamPos, isFocusing ? 0.05 : 0.2);
+
+    // Lerp OrbitControls target so orbit rotates around the planet
+    controls.target.lerp(focusTarget, isFocusing ? 0.06 : 0.025);
+
+    // Once we're close enough, stop the initial focusing animation
+    if (isFocusing && camera.position.distanceTo(desiredCamPos) < 2) {
+      isFocusing = false;
+    }
+  }
+
+  // ── UPDATE CONTROLS (must call every frame when damping enabled) ──
+  controls.update();
+
+  // RENDER THE SCENE
+  renderer.render(scene, camera);
+}
+animate();
+
+// RESIZE HANDLER
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});

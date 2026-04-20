@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SOLAR SYSTEM EXPLORER</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js">
+    </script>
+    -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Courier+Prime:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- THREE.JS RENDER TARGET -->
+    <canvas id="canvas"></canvas>
+
+    <!-- Loading screen — visible until all textures are loaded -->
+    <div id="loader">
+      <div class="loader-title">SOLAR SYSTEM</div>
+      <div class="loader-sub">Initializing planetary data &amp; textures</div>
+      <div class="loader-bar-track">
+        <div class="loader-bar-fill" id="loader-bar"></div>
+      </div>
+      <div class="loader-status" id="loader-status">LOADING...</div>
+    </div>
+
+    <div id="title-bar">
+      <h1>Solar System Explorer</h1>
+      <p>Click any planet &mdash; scroll to zoom &mdash; drag to orbit</p>
+    </div>
+    <!-- Right-side planet info panel  -->
+    <div id="info-panel">
+      <div class="panel-planet-name" id="panel-name">—</div>
+      <div class="info-row">
+        <span class="info-label">Diameter</span
+        ><span class="info-value" id="panel-diameter">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Mass</span
+        ><span class="info-value" id="panel-mass">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Dist. from Sun</span
+        ><span class="info-value" id="panel-dist">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Orbital Period</span
+        ><span class="info-value" id="panel-period">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Day Length</span
+        ><span class="info-value" id="panel-day">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Avg. Temp.</span
+        ><span class="info-value" id="panel-temp">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Moons</span
+        ><span class="info-value" id="panel-moons">—</span>
+      </div>
+      <div class="info-desc" id="panel-desc">—</div>
+      <button class="panel-close" id="panel-close">× Dismiss</button>
+    </div>
+
+    <!-- Floating planet name tooltip (follows mouse) -->
+    <div id="tooltip"></div>
+
+    <!-- Focus ring that appears at screen-centre when locked onto a planet -->
+    <div id="focus-ring"></div>
+
+    <!-- Keyboard/mouse hints — fades out after 8 seconds -->
+    <div id="hints">
+      <div class="hint-line"><span>Click</span> — Focus planet</div>
+      <div class="hint-line"><span>Scroll</span> — Zoom</div>
+      <div class="hint-line"><span>Drag</span> — Orbit camera</div>
+      <div class="hint-line"><span>Esc</span> — Release focus</div>
+    </div>
+
+    <!-- Bottom-left controls: speed + toggles -->
+    <div id="controls">
+      <div class="ctrl-section-label">Time Scale</div>
+      <div class="ctrl-row" id="speed-btns">
+        <button class="btn btn-speed" data-speed="0">PAUSE</button>
+        <button class="btn btn-speed active" data-speed="1">1×</button>
+        <button class="btn btn-speed" data-speed="100">100×</button>
+        <button class="btn btn-speed" data-speed="10000">10K×</button>
+        <button class="btn btn-speed" data-speed="100000">100K×</button>
+      </div>
+      <div class="ctrl-row" style="margin-top: 0.4rem">
+        <button class="btn active" id="btn-orbits">Orbits</button>
+        <button class="btn active" id="btn-labels">Labels</button>
+        <button class="btn" id="btn-scale">True Scale</button>
+      </div>
+    </div>
+
+    <!-- Time display bottom-right -->
+    <div id="time-display">
+      <div class="speed-label" id="speed-display">1×</div>
+      <div class="speed-unit">Time scale</div>
+    </div>
+
+    <div id="planet-nav"></div>
+    <script src="js/main.js"></script>
+  </body>
+</html>
